@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html><head>
+<title>SPIN THE WHEEL! #thewheel @Quakenet</title>
+<script src="pixi.min.js"></script>
+<script src="https://cdn.socket.io/socket.io-1.2.0.js"></script>
+<style>
+section {
+  display: inline-block;
+  margin: 0 auto;
+}
+#wheel {
+  width: 600px;
+  float: left;
+}
+.scoreboard{
+  min-width: 150px;
+  margin-left: 20px;
+  margin-right: 20px;
+  float: left;
+}
+</style>
+</head>
+
+<body style="text-align: center">
+<section>
+<div id="wheel"></div>
+<div class="scoreboard">
+<u>Scores</u>
+<table id="scoreboard"></table>
+</div>
+<iframe src="https://webchat.quakenet.org/?nick=new_player..&channels=thewheel&prompt=1&uio=d4" width="647" height="500"></iframe>
+</section>
+<script>
+// Aliases
+var Container = PIXI.Container,
+    TextureCache = PIXI.utils.TextureCache,
+    autoDetectRenderer = PIXI.autoDetectRenderer,
+    loader = PIXI.loader,
+    resources = PIXI.loader.resources,
+    Sprite = PIXI.Sprite;
+
+var renderer = autoDetectRenderer(500, 500);
+//renderer.view.style.border = "1px solid black";
+renderer.backgroundColor = 0xFFFFFF;
+
+document.getElementById("wheel").appendChild(renderer.view);
+var stage = new Container();
+
+loader
+  .add("wheeloffortune.png")
+  .add("pointer.png")
+  .load(setup);
+
+var wheel;
+
+function setup() {
+  wheel = new Sprite(resources["wheeloffortune.png"].texture)
+  wheel.anchor.set(0.5, 0.5)
+  wheel.x = renderer.width/2
+  wheel.y = renderer.height/2
+  wheel.rotation_speed = 0
+  stage.addChild(wheel)
+  var triangle = new Sprite(resources["pointer.png"].texture)
+  triangle.anchor.set(0.5, 0.5)
+  triangle.x = renderer.width/2
+  triangle.y = 0
+  stage.addChild(triangle)
+  init_socketio()
+  gameLoop();
+}
+
+function gameLoop() {
+  requestAnimationFrame(gameLoop)
+  wheel.rotation += wheel.rotation_speed
+  wheel.rotation_speed = wheel.rotation_speed*0.997
+  if (wheel.rotation_speed < 0.02) {
+    wheel.rotation_speed = 0
+  }
+  renderer.render(stage)
+}
+
+function spin(force) {
+  wheel.rotation_speed = force
+}
+
+function spintest() {
+  spin(0.06+0.05*Math.random())
+}
+
+function getSortedKeys(obj) { // thank stackoverflow
+    var keys = []; for(var key in obj) keys.push(key);
+    return keys.sort(function(a,b){return obj[b]-obj[a]});
+}
+
+function init_socketio() {
+  socket = io();
+
+  socket.on('rotation', function(rot){
+    wheel.rotation = rot
+  });
+
+  socket.on('spin', function(force){
+    spin(force)
+  });
+
+  socket.on('scores', function(scores){
+    sorted_players = getSortedKeys(scores)
+    document.getElementById("scoreboard").innerHTML = ""
+    for (var i = sorted_players.length-1; i >= 0; i--) {
+      var p = sorted_players[i]
+      var row = document.getElementById("scoreboard").insertRow(0);
+      row.insertCell(0).innerHTML = p;
+      row.insertCell(1).innerHTML = scores[p];
+    }
+  })
+}
+</script>
+</body>
+</html>
